@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Conversation Game - Live Table</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --border: #334155;
+            --player1: #60a5fa;
+            --player2: #fbbf24;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1700px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .name-editor {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.7);
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .name-input {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 10px;
+            border-radius: 6px;
+            width: 120px;
+        }
+
+        .name-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .save-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .save-btn:hover {
+            opacity: 0.9;
+        }
+
+        
+        
+        .game-area {
+            display: grid;
+            grid-template-areas: "left center right";
+            grid-template-columns: clamp(240px, 22vw, 300px) minmax(760px, 1fr) clamp(280px, 26vw, 360px);
+            gap: 18px;
+            margin-bottom: 30px;
+            align-items: start;
+        }
+
+        .left-sidebar { 
+            grid-area: left; 
+            align-self: start;
+            position: sticky;
+            top: 16px;
+            max-height: calc(100vh - 140px);
+            overflow: auto;
+        }
+        .poker-table  { 
+            grid-area: center; 
+            min-width: 760px;
+        }
+        .control-panel{ 
+            grid-area: right; 
+            align-self: start;
+            position: sticky;
+            top: 16px;
+            max-height: calc(100vh - 140px);
+            overflow: auto;
+        }
+
+        /* Medium screens: keep table full width, move side panels below (left | right) */
+        @media (max-width: 1400px) {
+            .game-area {
+                grid-template-areas:
+                  "center center"
+                  "left right";
+                grid-template-columns: 1fr 1fr;
+            }
+            .poker-table { min-width: auto; }
+            .left-sidebar, .control-panel {
+                position: static;
+                max-height: none;
+                overflow: visible;
+            }
+        }
+
+        /* Small screens: stack everything */
+        @media (max-width: 900px) {
+            .game-area {
+                grid-template-areas:
+                  "center"
+                  "left"
+                  "right";
+                grid-template-columns: 1fr;
+            }
+        }
+.left-sidebar { grid-area: left; 
+            max-width: 280px;
+        }
+        .poker-table  { grid-area: center; min-width: 720px; }
+        .control-panel{ grid-area: right; 
+            max-width: 320px;
+        }
+
+        /* When the screen is narrow, stack panels so the table stays full width */
+        @media (max-width: 1240px) {
+            .game-area {
+                grid-template-areas:
+                  "center"
+                  "left"
+                  "right";
+                grid-template-columns: 1fr;
+                overflow-x: visible;
+            }
+            .poker-table { min-width: auto; }
+        }
+
+        @media (max-width: 768px) {
+            .game-area {
+                grid-template-areas:
+                  "center"
+                  "left"
+                  "right";
+                grid-template-columns: 1fr;
+            }
+            .poker-table { min-width: auto; padding: 20px; }
+        }
+/* TABLERO PRINCIPAL */
+        .poker-table {
+            background: linear-gradient(135deg, #1a2c47 0%, #0f1a2d 100%);
+            border-radius: 20px;
+            padding: 30px;
+            border: 3px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            min-height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .table-center {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid var(--border);
+            text-align: center;
+        }
+
+        .community-cards {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .card-slot {
+            width: 90px;
+            height: 130px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 2px dashed var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        .card {
+            width: 90px;
+            height: 130px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card.hearts, .card.diamonds {
+            color: #dc2626;
+        }
+
+        .card.spades, .card.clubs {
+            color: #1f2937;
+        }
+
+        .card-value {
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+
+        .card-suit {
+            font-size: 1.5rem;
+            margin-top: 5px;
+        }
+
+        /* JUGADORES */
+        .players {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+        }
+
+        .player {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 15px;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            width: 45%;
+        }
+
+        .player.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .player-1 {
+            border-left: 5px solid var(--player1);
+        }
+
+        .player-2 {
+            border-left: 5px solid var(--player2);
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .player-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .name-edit-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 2px;
+        }
+
+        .name-edit-btn:hover {
+            color: var(--primary);
+        }
+
+        .player-chips {
+            background: var(--primary);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .player-cards {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .player-action {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* PANEL DE CONTROL */
+        .control-panel {
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 16px;
+            border: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .panel-section {
+            margin-bottom: 0;
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .action-buttons {
+            display: grid;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-bet {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-call {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-raise {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-fold {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-check {
+            background: var(--text-muted);
+            color: white;
+        }
+
+        .btn-deal {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            color: white;
+            font-size: 1.1rem;
+            padding: 15px;
+        }
+
+        .chips-control {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .chip-btn {
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chip-btn:hover {
+            background: var(--border);
+        }
+
+        .chip-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .game-log {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            flex-grow: 1;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .current-pot {
+            font-size: 1.8rem;
+            color: var(--warning);
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 10px;
+        }
+
+        .hand-strength {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .status-message {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.1rem;
+        }
+
+        /* CONVERSATION HELPER */
+        .conversation-helper {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .helper-title {
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .phrase-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid var(--success);
+            padding: 10px;
+            margin: 8px 0;
+            font-size: 0.9rem;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .phrase-box .action {
+            color: var(--warning);
+            font-weight: bold;
+        }
+
+        /* BONUS TRACKER */
+        .bonus-tracker {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .bonus-title {
+            color: var(--success);
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bonus-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+        }
+
+        .bonus-item:last-child {
+            border-bottom: none;
+        }
+
+        .bonus-point {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        /* ANIMACIONES */
+        @keyframes dealCard {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        .card-dealt {
+            animation: dealCard 0.5s ease-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        /* MODAL PARA EDITAR NOMBRES */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            border: 2px solid var(--primary);
+        }
+
+        .modal-title {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .modal-input-group {
+            margin-bottom: 20px;
+        }
+
+        .modal-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .modal-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .modal-btn.secondary {
+            background: var(--text-muted);
+            color: white;
+        }
+    
+        /* --- Teacher hole cards (hidden by default) --- */
+        .card.back{
+            background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(14,165,233,0.18));
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: rgba(226, 232, 240, 0.9);
+        }
+        .card.back .card-suit{ font-size: 20px; }
+
+        /* --- Quick action row --- */
+        .quick-actions{
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            margin-top:10px;
+        }
+        .btn.small{
+            padding: 10px 12px;
+            font-size: 12px;
+            border-radius: 10px;
+        }
+
+        /* --- Winner prompt card --- */
+        .prompt-box{
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 64px;
+        }
+        .prompt-title{
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .prompt-meta{
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .prompt-text{
+            font-size: 14px;
+            line-height: 1.35;
+        }
+
+
+    /* --- SFX + Win animations --- */
+    @media (prefers-reduced-motion: reduce){
+      .winner-anim, .pot-win, .prompt-win, .split-anim { animation: none !important; }
+    }
+
+    .winner-anim{
+      animation: winnerPop 1.15s ease;
+      box-shadow: 0 0 0 2px rgba(134,239,172,0.65), 0 10px 40px rgba(0,0,0,0.45), 0 0 28px rgba(134,239,172,0.25);
+    }
+    @keyframes winnerPop{
+      0%{ transform: translateZ(0) scale(1); }
+      18%{ transform: translateZ(0) scale(1.03); }
+      45%{ transform: translateZ(0) scale(1.01); }
+      100%{ transform: translateZ(0) scale(1); }
+    }
+
+    #potAmount.pot-win{
+      animation: potFlash 0.9s ease;
+      text-shadow: 0 0 18px rgba(255,255,255,0.25), 0 0 24px rgba(255,215,0,0.12);
+    }
+    @keyframes potFlash{
+      0%{ transform: scale(1); filter: brightness(1); }
+      35%{ transform: scale(1.08); filter: brightness(1.25); }
+      100%{ transform: scale(1); filter: brightness(1); }
+    }
+
+    #winnerPromptBox.prompt-win{
+      animation: promptFlash 0.9s ease;
+    }
+    @keyframes promptFlash{
+      0%{ transform: scale(1); }
+      40%{ transform: scale(1.02); }
+      100%{ transform: scale(1); }
+    }
+
+    .split-anim{
+      animation: splitGlow 0.9s ease;
+      box-shadow: 0 0 0 2px rgba(96,165,250,0.6), 0 10px 40px rgba(0,0,0,0.45), 0 0 24px rgba(96,165,250,0.22);
+    }
+    @keyframes splitGlow{
+      0%{ transform: scale(1); }
+      35%{ transform: scale(1.02); }
+      100%{ transform: scale(1); }
+    }
+
+
+        /* --- End-of-hand FX (toast + winner override) --- */
+        .hand-toast{
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            opacity: 0;
+            pointer-events: none;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.88);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: var(--shadow);
+            color: var(--text);
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.2px;
+            z-index: 9999;
+            max-width: min(92vw, 720px);
+            text-align: center;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .hand-toast.show{
+            animation: toastPop 1.25s ease;
+        }
+        .hand-toast.good{
+            border-color: rgba(134, 239, 172, 0.55);
+        }
+        .hand-toast.split{
+            border-color: rgba(96, 165, 250, 0.55);
+        }
+        @keyframes toastPop{
+            0%   { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.98); }
+            15%  { opacity: 1; transform: translateX(-50%) translateY(0px) scale(1.02); }
+            60%  { opacity: 1; transform: translateX(-50%) translateY(0px) scale(1.00); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.99); }
+        }
+
+        /* Ensure winner FX overrides the "active" blue shadow */
+        .player.winner-anim{
+            border-color: rgba(134,239,172,0.75) !important;
+            box-shadow: 0 0 0 2px rgba(134,239,172,0.65), 0 10px 40px rgba(0,0,0,0.45), 0 0 28px rgba(134,239,172,0.25) !important;
+        }
+        .player.split-anim{
+            border-color: rgba(96,165,250,0.75) !important;
+            box-shadow: 0 0 0 2px rgba(96,165,250,0.55), 0 10px 40px rgba(0,0,0,0.45), 0 0 28px rgba(96,165,250,0.20) !important;
+        }
+
+
+        /* --- Celebration overlay (20s) --- */
+        .celebration-overlay{
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            pointer-events: none;
+            background: radial-gradient( circle at 50% 30%, rgba(34,197,94,0.14), rgba(15,23,42,0.72) 55%, rgba(2,6,23,0.84) 100% );
+            backdrop-filter: blur(2px);
+        }
+        .celebration-overlay.show{
+            display: flex;
+            animation: overlayIn .35s ease;
+        }
+        @keyframes overlayIn{
+            from{ opacity: 0; transform: scale(0.995); }
+            to{ opacity: 1; transform: scale(1); }
+        }
+        .celebration-banner{
+            position: relative;
+            padding: 16px 18px;
+            border-radius: 18px;
+            border: 1px solid rgba(148,163,184,0.28);
+            background: rgba(15,23,42,0.78);
+            box-shadow: var(--shadow);
+            text-align: center;
+            max-width: min(720px, 92vw);
+        }
+        .celebration-title{
+            font-size: clamp(22px, 3.2vw, 34px);
+            font-weight: 900;
+            letter-spacing: 0.2px;
+            margin-bottom: 6px;
+            text-shadow: 0 0 18px rgba(255,255,255,0.08);
+        }
+        .celebration-sub{
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .celebration-title .name{
+            color: var(--good);
+        }
+        .celebration-burst{
+            position: absolute;
+            inset: -40px;
+            pointer-events: none;
+            opacity: 0.7;
+            filter: blur(0.2px);
+            animation: burstPulse 1.3s ease-in-out infinite;
+        }
+        @keyframes burstPulse{
+            0%{ transform: scale(0.98); opacity: 0.50; }
+            50%{ transform: scale(1.02); opacity: 0.80; }
+            100%{ transform: scale(0.98); opacity: 0.50; }
+        }
+        .burst-ring{
+            position:absolute;
+            inset: 18%;
+            border-radius: 999px;
+            border: 2px solid rgba(34,197,94,0.20);
+            box-shadow: 0 0 28px rgba(34,197,94,0.12);
+        }
+        .burst-ring.r2{ inset: 8%; border-color: rgba(34,197,94,0.12); }
+        .burst-ring.r3{ inset: 28%; border-color: rgba(34,197,94,0.16); }
+
+        .confetti{
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .confetti i{
+            position: absolute;
+            top: -12vh;
+            left: calc(var(--x) * 1%);
+            width: 10px;
+            height: 14px;
+            border-radius: 2px;
+            background: hsl(var(--h), 90%, 60%);
+            opacity: 0.95;
+            transform: rotate(calc(var(--r) * 1deg));
+            animation: confettiFall calc(var(--d) * 1s) linear calc(var(--delay) * 1s) infinite;
+        }
+        @keyframes confettiFall{
+            0%{ transform: translateY(-10vh) rotate(calc(var(--r) * 1deg)); }
+            100%{ transform: translateY(110vh) rotate(calc((var(--r) + 240) * 1deg)); }
+        }
+        .emoji-float{
+            position: fixed;
+            left: calc(var(--x) * 1%);
+            top: calc(var(--y) * 1%);
+            font-size: 22px;
+            opacity: 0.0;
+            transform: translateY(10px) scale(0.96);
+            animation: emojiUp 2.2s ease-in-out calc(var(--delay) * 1s) infinite;
+            pointer-events: none;
+            filter: drop-shadow(0 8px 18px rgba(0,0,0,0.45));
+        }
+        @keyframes emojiUp{
+            0%{ opacity: 0; transform: translateY(10px) scale(0.96); }
+            20%{ opacity: 0.95; transform: translateY(0px) scale(1.00); }
+            80%{ opacity: 0.75; transform: translateY(-18px) scale(1.02); }
+            100%{ opacity: 0; transform: translateY(-26px) scale(1.01); }
+        }
+
+        /* Longer winner highlight (kept for 20s via JS) */
+        .winner-anim-long{
+            animation: winnerPulse 1.8s ease-in-out infinite;
+            border-color: rgba(134,239,172,0.75) !important;
+            box-shadow: 0 0 0 2px rgba(134,239,172,0.70), 0 10px 40px rgba(0,0,0,0.45), 0 0 28px rgba(134,239,172,0.28) !important;
+        }
+        @keyframes winnerPulse{
+            0%{ transform: scale(1); filter: brightness(1); }
+            50%{ transform: scale(1.02); filter: brightness(1.10); }
+            100%{ transform: scale(1); filter: brightness(1); }
+        }
+        #potAmount.pot-win-long{
+            animation: potPulse 1.5s ease-in-out infinite;
+            text-shadow: 0 0 18px rgba(255,255,255,0.25), 0 0 24px rgba(255,215,0,0.12);
+        }
+        @keyframes potPulse{
+            0%{ transform: scale(1); filter: brightness(1); }
+            50%{ transform: scale(1.08); filter: brightness(1.22); }
+            100%{ transform: scale(1); filter: brightness(1); }
+        }
+        #winnerPromptBox.prompt-win-long{
+            animation: promptPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes promptPulse{
+            0%{ transform: scale(1); }
+            50%{ transform: scale(1.02); }
+            100%{ transform: scale(1); }
+        }
+
+        /* Meet quick panel */
+        .meet-quick-panel{
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px dashed rgba(148,163,184,0.28);
+            background: rgba(2,6,23,0.25);
+        }
+        .meet-quick-panel h4{
+            margin: 0 0 6px 0;
+            font-size: 13px;
+            font-weight: 800;
+        }
+        .meet-quick-panel p{ margin: 0 0 10px 0; color: var(--text-muted); }
+        .meet-quick-panel .quick-buttons{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .meet-action-btn{
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(148,163,184,0.25);
+            background: rgba(15,23,42,0.55);
+            color: var(--text);
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform .12s ease, filter .12s ease;
+        }
+        .meet-action-btn:hover{ transform: translateY(-1px); filter: brightness(1.08); }
+        .meet-quick-panel .custom-action{
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .meet-quick-panel input{
+            background: rgba(2,6,23,0.45);
+            border: 1px solid rgba(148,163,184,0.25);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 8px 10px;
+            outline: none;
+        }
+        .meet-quick-panel .mini-hint{
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+
+        .left-sidebar{
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 16px;
+            border: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            align-self: start;
+            position: sticky;
+            top: 16px;
+            height: fit-content;
+        }
+        .left-sidebar .panel-section{ margin: 0; }
+
+</style>
+</head>
+<body>
+    
+  <div id="handEndToast" class="hand-toast" aria-live="polite"></div>
+  <div id="celebrationOverlay" class="celebration-overlay" aria-hidden="true"></div>
+<div class="container">
+        <div class="header">
+            <h1>♠️ ♥️ Poker Conversation Game ♣️ ♦️</h1>
+            <div class="subtitle">
+                <span>Bet chips, speak English, win conversations!</span>
+                <div class="name-editor">
+                    <input type="text" id="quickName1" class="name-input" placeholder="Student" value="">
+                    <span>vs</span>
+                    <input type="text" id="quickName2" class="name-input" placeholder="Teacher" value="">
+                    <button class="save-btn" id="quickSaveBtn">Update Names</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-area">
+            <!-- LEFT TOP SIDEBAR -->
+            <div class="left-sidebar" id="leftSidebar">
+<!-- WINNER CONVERSATION CARD -->
+                <div class="panel-section">
+                    <h3 class="panel-title">🎴 Winner Conversation Card</h3>
+                    <div class="prompt-box" id="winnerPromptBox">
+                        <div class="prompt-title">Win a hand to reveal a prompt</div>
+                        <div class="prompt-meta">Tip: the prompt matches the winning hand strength.</div>
+                        <div class="prompt-text" id="winnerPromptText">—</div>
+                    </div>
+                    <div class="quick-actions" style="margin-top: 10px;">
+                        <button class="btn small btn-check" id="nextPromptBtn" disabled>🔁 Next prompt</button>
+                        <button class="btn small btn-call" id="copyPromptBtn" disabled>📋 Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLERO PRINCIPAL -->
+            <div class="poker-table">
+                <div class="current-pot">
+                    <div>Pot Total</div>
+                    <div id="potAmount">100</div>
+                </div>
+
+                <div class="table-center">
+                    <h3>Community Cards</h3>
+                    <div class="community-cards" id="communityCards">
+                        <div class="card-slot">Flop</div>
+                        <div class="card-slot">Flop</div>
+                        <div class="card-slot">Flop</div>
+                        <div class="card-slot">Turn</div>
+                        <div class="card-slot">River</div>
+                    </div>
+                </div>
+
+                <!-- JUGADORES -->
+                <div class="players">
+                    <div class="player player-1 active" id="player1">
+                        <div class="player-info">
+                            <div class="player-name">
+                                <span id="player1Name">Santiago</span>
+                                <button class="name-edit-btn" data-player="1">✏️</button>
+                            </div>
+                            <div class="player-chips" id="player1Chips">500</div>
+                        </div>
+                        <div class="hand-strength">
+                            <span>Hand:</span>
+                            <strong id="player1Hand">Waiting...</strong>
+                        </div>
+                        <div class="player-cards" id="player1Cards">
+                            <div class="card-slot">?</div>
+                            <div class="card-slot">?</div>
+                        </div>
+                        <div class="player-action">
+                            <div id="player1Status" class="status-message">Your turn!</div>
+                            
+                            <!-- BONUS TRACKER PARA ESTUDIANTE -->
+                            <div class="bonus-tracker">
+                                <div class="bonus-title">
+                                    <span>🎯 B2 Speaking Bonus</span>
+                                    <span id="player1BonusTotal">0 points</span>
+                                </div>
+                                <div class="bonus-item">
+                                    <span>Hedging language</span>
+                                    <button class="bonus-point" data-bonus="hedging">+1</button>
+                                </div>
+                                <div class="bonus-item">
+                                    <span>Advanced linkers</span>
+                                    <button class="bonus-point" data-bonus="linkers">+1</button>
+                                </div>
+                                <div class="bonus-item">
+                                    <span>Self-correction</span>
+                                    <button class="bonus-point" data-bonus="correction">+1</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="player player-2" id="player2">
+                        <div class="player-info">
+                            <div class="player-name">
+                                <span id="player2Name">Teacher</span>
+                                <button class="name-edit-btn" data-player="2">✏️</button>
+                            </div>
+                            <div class="player-chips" id="player2Chips">500</div>
+                        </div>
+                        <div class="hand-strength">
+                            <span>Hand:</span>
+                            <strong id="player2Hand">Waiting...</strong>
+                        </div>
+                        <div class="player-cards" id="player2Cards">
+                            <div class="card-slot">?</div>
+                            <div class="card-slot">?</div>
+                        </div>
+                        <div class="player-action">
+                            <div id="player2Status" class="status-message">Waiting...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL DE CONTROL -->
+            <div class="control-panel">
+                <div class="panel-section">
+                    <h3 class="panel-title">🎮 Game Controls</h3>
+                    <div class="action-buttons">
+                        <button class="btn btn-deal" id="dealBtn">
+                            <span>🃏</span> Deal New Hand
+                        </button>
+                    </div>
+                    <div class="quick-actions" style="margin-top: 10px;">
+                        <button class="btn small btn-check" id="toggleTeacherBtn" title="Oculta o revela las 2 cartas del teacher">
+                            🙈 Teacher Cards: Hidden
+                        </button>
+                        <button class="btn small btn-call" id="soundToggleBtn" title="Activar o desactivar sonidos">🔊 Sound: On</button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3 class="panel-title">💰 Bet Amount</h3>
+                    <div class="chips-control">
+                        <button class="chip-btn" data-amount="10">10</button>
+                        <button class="chip-btn" data-amount="25">25</button>
+                        <button class="chip-btn" data-amount="50">50</button>
+                        <button class="chip-btn" data-amount="100">100</button>
+                        <button class="chip-btn" data-amount="250">250</button>
+                        <button class="chip-btn" data-amount="500">500</button>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <input type="number" id="customBet" placeholder="Custom bet" 
+                               style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text);">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3 class="panel-title">🎯 Player Actions</h3>
+                    <div class="action-buttons">
+                        <button class="btn btn-check" id="checkBtn">✓ Check</button>
+                        <button class="btn btn-bet" id="betBtn">🎲 Bet</button>
+                        <button class="btn btn-call" id="callBtn">📞 Call</button>
+                        <button class="btn btn-raise" id="raiseBtn">📈 Raise</button>
+                        <button class="btn btn-fold" id="foldBtn">✗ Fold</button>
+                    </div>
+                    <div class="quick-actions">
+                        <button class="btn small btn-bet" id="quickBet5">Quick Bet 5</button>
+                        <button class="btn small btn-bet" id="quickBet10">Quick Bet 10</button>
+                        <button class="btn small btn-call" id="quickCall">Quick Call</button>
+                        <span class="hint" style="align-self:center;">Acciones rápidas</span>
+                    </div>
+
+                </div>
+
+                <!-- CONVERSATION HELPER -->
+                <div class="panel-section">
+                    <h3 class="panel-title">💬 Speaking Prompts</h3>
+                    <div class="conversation-helper">
+                        <div class="helper-title">📝 Use these phrases:</div>
+                        <div class="phrase-box">
+                            <span class="action">BET:</span> "I'll bet ___ because..."
+                        </div>
+                        <div class="phrase-box">
+                            <span class="action">CALL:</span> "I'll call. My take is..."
+                        </div>
+                        <div class="phrase-box">
+                            <span class="action">RAISE:</span> "I raise. Let me challenge you..."
+                        </div>
+                        <div class="phrase-box">
+                            <span class="action">CHECK:</span> "I check. However..."
+                        </div>
+                        <div class="phrase-box">
+                            <span class="action">FOLD:</span> "I fold. Next time I'll..."
+                        </div>
+                    </div>
+                    
+                    <!-- BONUS EXAMPLES -->
+                    <div class="conversation-helper" style="margin-top: 15px; background: rgba(16, 185, 129, 0.1); border-color: var(--success);">
+                        <div class="helper-title">⭐ Bonus Examples:</div>
+                        <div class="phrase-box" style="border-left-color: var(--warning);">
+                            "I'd say...", "It depends...", "To be honest..."
+                        </div>
+                        <div class="phrase-box" style="border-left-color: var(--warning);">
+                            "However...", "Whereas...", "On the other hand..."
+                        </div>
+                        <div class="phrase-box" style="border-left-color: var(--warning);">
+                            "Let me rephrase...", "What I mean is..."
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-section" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <h3 class="panel-title">📊 Game Log</h3>
+                    <div class="game-log" id="gameLog">
+                        <div class="log-entry">Game started. Good luck!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA EDITAR NOMBRES -->
+    <div class="modal" id="nameModal">
+        <div class="modal-content">
+            <h3 class="modal-title">✏️ Edit Player Names</h3>
+            <div class="modal-input-group">
+                <label for="modalPlayer1Name">Player 1 (Student)</label>
+                <input type="text" id="modalPlayer1Name" class="modal-input" value="">
+            </div>
+            <div class="modal-input-group">
+                <label for="modalPlayer2Name">Player 2 (Teacher)</label>
+                <input type="text" id="modalPlayer2Name" class="modal-input" value="">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" id="modalCancelBtn">Cancel</button>
+                <button class="modal-btn primary" id="modalSaveBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    
+<script>
+(() => {
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  const SUIT_SYMBOL = { hearts: "♥", diamonds: "♦", clubs: "♣", spades: "♠" };
+  const VALUE_NUM = { "2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"J":11,"Q":12,"K":13,"A":14 };
+
+  function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+  function fmt(n){ return Number.isFinite(n) ? String(n) : "0"; }
+
+  
+  
+
+  // --- Sound (WebAudio, no external files) ---
+  const _soundKey = "pokergame_soundOn_v1";
+  let soundsOn = (localStorage.getItem(_soundKey) ?? "1") === "1";
+  let audioCtx = null;
+
+  function ensureAudio(){
+    if(!soundsOn) return null;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    if(!audioCtx) audioCtx = new AC();
+    if(audioCtx.state === "suspended"){
+      audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+  }
+
+  function tone(freq, dur=0.06, type="triangle", gain=0.12, when=0){
+    const ctx = ensureAudio();
+    if(!ctx) return;
+    const t0 = ctx.currentTime + when;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start(t0);
+    o.stop(t0 + dur + 0.02);
+  }
+
+  function playSound(kind){
+    if(!soundsOn) return;
+    ensureAudio();
+    if(kind === "chip"){
+      tone(880, 0.055, "triangle", 0.11);
+    }else if(kind === "check"){
+      tone(520, 0.04, "sine", 0.08);
+    }else if(kind === "deal"){
+      tone(740, 0.04, "sine", 0.06, 0.00);
+      tone(660, 0.05, "sine", 0.06, 0.06);
+      tone(590, 0.06, "sine", 0.06, 0.13);
+    }else if(kind === "fold"){
+      tone(220, 0.09, "square", 0.06);
+    }else if(kind === "win"){
+      tone(660, 0.07, "sine", 0.10, 0.00);
+      tone(990, 0.11, "sine", 0.10, 0.08);
+      tone(1320, 0.12, "triangle", 0.09, 0.18);
+    }else if(kind === "error"){
+      tone(180, 0.12, "square", 0.06);
+    }
+  }
+
+  function setSounds(on){
+    soundsOn = !!on;
+    localStorage.setItem(_soundKey, soundsOn ? "1" : "0");
+    const btn = $("#soundToggleBtn");
+    if(btn) btn.textContent = soundsOn ? "🔊 Sound: On" : "🔇 Sound: Off";
+  }
+
+  // Unlock audio on first user gesture
+  const _unlockAudio = () => { ensureAudio(); document.removeEventListener("pointerdown", _unlockAudio); document.removeEventListener("keydown", _unlockAudio); };
+  document.addEventListener("pointerdown", _unlockAudio);
+  document.addEventListener("keydown", _unlockAudio);
+
+  // --- FX helpers ---
+  
+  function showToast(text, kind="good"){
+    const el = $("#handEndToast");
+    if(!el) return;
+    el.textContent = text;
+    el.classList.remove("good","split","show");
+    el.classList.add(kind === "split" ? "split" : "good");
+    restartAnim(el, "show", 1250);
+  }
+function restartAnim(el, cls, ms=1100){
+    if(!el) return;
+    el.classList.remove(cls);
+    void el.offsetWidth; // reflow to restart
+    el.classList.add(cls);
+    window.setTimeout(()=> el.classList.remove(cls), ms);
+  }
+
+  const WIN_FX_MS = 20000;
+
+  let _celebrateTimer = null;
+
+  function clearCelebration(){
+    if(_celebrateTimer) { clearTimeout(_celebrateTimer); _celebrateTimer = null; }
+    const ov = document.getElementById("celebrationOverlay");
+    if(!ov) return;
+    ov.classList.remove("show");
+    ov.innerHTML = "";
+    ov.setAttribute("aria-hidden","true");
+  }
+
+  function buildConfettiHTML(count=120){
+    let s = '<div class="confetti" aria-hidden="true">';
+    for(let i=0;i<count;i++){
+      const x = Math.random()*100;
+      const h = Math.floor(Math.random()*360);
+      const r = Math.floor(Math.random()*360);
+      const d = 2.8 + Math.random()*2.8;
+      const delay = Math.random()*0.8;
+      s += `<i style="--x:${x};--h:${h};--r:${r};--d:${d};--delay:${delay}"></i>`;
+    }
+    s += "</div>";
+    // floating emojis
+    const emojis = ["🎉","✨","🏆","🔥","🌟","👏","🎊"];
+    for(let j=0;j<10;j++){
+      const x = 8 + Math.random()*84;
+      const y = 18 + Math.random()*54;
+      const delay = Math.random()*1.4;
+      const e = emojis[Math.floor(Math.random()*emojis.length)];
+      s += `<div class="emoji-float" style="--x:${x};--y:${y};--delay:${delay}">${e}</div>`;
+    }
+    return s;
+  }
+
+  function celebrate(kind, title, subtitle){
+    clearCelebration();
+    const ov = document.getElementById("celebrationOverlay");
+    if(!ov) return;
+
+    const ringColor = (kind==="split") ? "rgba(96,165,250,0.18)" : "rgba(34,197,94,0.18)";
+    const nameColor = (kind==="split") ? "var(--accent)" : "var(--good)";
+    const icon = (kind==="split") ? "🤝" : "🏆";
+
+    ov.innerHTML = `
+      ${buildConfettiHTML(kind==="split" ? 90 : 140)}
+      <div class="celebration-banner" role="status" aria-live="polite">
+        <div class="celebration-burst">
+          <div class="burst-ring r1" style="border-color:${ringColor};"></div>
+          <div class="burst-ring r2" style="border-color:${ringColor};"></div>
+          <div class="burst-ring r3" style="border-color:${ringColor};"></div>
+        </div>
+        <div class="celebration-title">${icon} <span class="name" style="color:${nameColor};">${title}</span></div>
+        <div class="celebration-sub">${subtitle || ""}</div>
+      </div>
+    `;
+    ov.classList.add("show");
+    ov.setAttribute("aria-hidden","false");
+    _celebrateTimer = setTimeout(()=> clearCelebration(), WIN_FX_MS);
+  }
+
+  function winFX(winner, winnerName){
+    // normalize arguments (sometimes an element gets passed by mistake)
+    if (winner && winner.nodeType === 1) { winner = winner.textContent || winner.value || ""; }
+    if (winnerName && winnerName.nodeType === 1) { winnerName = winnerName.textContent || winnerName.value || ""; }
+
+    const w = Number(winner) || 0;
+    const p = (w === 1) ? $("#player1") : $("#player2");
+    restartAnim(p, "winner-anim-long", WIN_FX_MS);
+    restartAnim($("#potAmount"), "pot-win-long", WIN_FX_MS);
+    restartAnim($("#winnerPromptBox"), "prompt-win-long", WIN_FX_MS);
+
+    // fallback name (if not provided)
+    if(!winnerName){
+      const g = window.pokerConversationGame;
+      winnerName = g ? (w===1 ? g.player1Name : g.player2Name) : (w===1 ? "Player 1" : "Player 2");
+    }
+
+    celebrate("win", `${winnerName} WINS!`, "Conversation Card unlocked — answer to collect the pot.");
+  }
+
+  function splitFX(){
+    restartAnim($("#player1"), "split-anim", WIN_FX_MS);
+    restartAnim($("#player2"), "split-anim", WIN_FX_MS);
+    restartAnim($("#potAmount"), "pot-win-long", WIN_FX_MS);
+    celebrate("split", "Split Pot!", "Both players get half — pick an easier prompt or do a light debate.");
+  }
+
+// --- Conversation Prompts (auto by winning hand) ---
+  const PROMPTS = {
+    low: [
+      "Tell me about two contrasting things: one habit you want to start and one you want to quit next year.",
+      "Describe your perfect lazy holiday day in detail, from morning to night."
+    ],
+    mid: [
+      "Give me three predictions for next year (for you or for the world).",
+      "Compare two series, movies, or books you've enjoyed recently. Which one do you recommend more, and why?"
+    ],
+    straight: [
+      "Narrate a sequence of events from a memorable trip. Use: First, Then, After that, Suddenly, Finally.",
+      "Explain the steps of how you plan and organize a big trip."
+    ],
+    flush: [
+      "Talk about a topic you're passionate about for one minute without stopping.",
+      "Describe a place you love using all five senses: what do you see, hear, smell, feel, and even taste there?"
+    ],
+    fullhouse: [
+      "Debate: Is it better to plan a holiday meticulously or to travel spontaneously? Argue your case.",
+      "Hypothetical: If you could have a house full of one thing (books, animals, art...), what would it be and why?"
+    ],
+    bonus: [
+      "Holiday Wish Card: Ask any curious question, OR take a 2-minute break and chat about anything you want.",
+      "Boss Mode: Tell a short story (2 minutes) using: although, whereas, on the other hand, to be honest, let me rephrase."
+    ],
+    split: [
+      "Split pot! Both players answer: What's one thing you learned this year that changed your mind?",
+      "Split pot! Both players answer: What's a goal for next year, and what's your first small step?"
+    ]
+  };
+
+  function promptCategoryFromRank(rank){
+    if(rank <= 2) return "low";         // High card / Pair
+    if(rank <= 4) return "mid";         // Two pair / Trips
+    if(rank === 5) return "straight";
+    if(rank === 6) return "flush";
+    if(rank === 7) return "fullhouse";
+    return "bonus";                     // Four / Straight flush / Royal
+  }
+
+  function pickPrompt(category){
+    const list = PROMPTS[category] || PROMPTS.low;
+    return list[Math.floor(Math.random()*list.length)];
+  }
+
+
+class PokerGame {
+    constructor(){
+      this.basePot = 0;
+
+      // state
+      this.deck = [];
+      this.communityCards = [];
+      this.player1Cards = [];
+      this.player2Cards = [];
+      this.pot = this.basePot;
+      this.currentBet = 0;
+      this.player1Chips = 50;
+      this.player2Chips = 50;
+      this.currentPlayer = 1;
+      this.gamePhase = "preflop";
+      this.betAmount = 5;
+      this.checkedOnce = false; // simple betting-round tracking
+
+      this.handOver = true; // no hand dealt yet
+
+      this.player1Name = "";
+      this.player2Name = "";
+
+      this.namesRequired = true;
+
+
+      // Teacher hole cards hidden by default (toggleable)
+      this.revealTeacher = false;
+
+      // Winner prompt memory
+      this.lastPromptCategory = null;
+      this.lastPromptText = "";
+      this.lastPromptWinner = "";
+      this.player1Bonus = { total: 0, hedging: 0, linkers: 0, correction: 0 };
+
+      this.init();
+    }
+
+    init(){
+      this.createDeck();
+      this.setupMeetQuickMode();
+      this.setupEventListeners();
+      this.openNameModal(true);
+      this.updateTeacherToggleUI();
+      this.setWinnerPrompt();
+      this.updateUI(true);
+      this.log('Game ready. Click "Deal New Hand" to start!');
+      setSounds(soundsOn);
+    }
+
+    createDeck(){
+      const suits = ["hearts","diamonds","clubs","spades"];
+      const values = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+      this.deck = [];
+      for(const s of suits){
+        for(const v of values){
+          this.deck.push({ suit:s, value:v, num: VALUE_NUM[v] });
+        }
+      }
+      this.shuffleDeck();
+    }
+
+    shuffleDeck(){
+      for(let i=this.deck.length-1; i>0; i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
+      }
+    }
+
+    newHand(){
+      this.handOver = false;
+      // Rebuild/shuffle deck each hand for simplicity
+      this.createDeck();
+      this.communityCards = [];
+      this.player1Cards = [this.deck.pop(), this.deck.pop()];
+      this.player2Cards = [this.deck.pop(), this.deck.pop()];
+      this.revealTeacher = false;
+      this.pot = this.basePot;
+      this.currentBet = 0;
+      this.currentPlayer = 1;
+      this.gamePhase = "preflop";
+      this.checkedOnce = false;
+      this.log("🃏 New hand dealt!");
+      playSound("deal");
+      this.updateTeacherToggleUI();
+      this.updateUI(true);
+    }
+
+    burn(){ this.deck.pop(); }
+
+    dealFlop(){
+      this.burn();
+      this.communityCards.push(this.deck.pop(), this.deck.pop(), this.deck.pop());
+      this.gamePhase = "flop";
+      this.log("Flop dealt.");
+      this.updateTeacherToggleUI();
+      this.updateUI(true);
+    }
+
+    dealTurn(){
+      this.burn();
+      this.communityCards.push(this.deck.pop());
+      this.gamePhase = "turn";
+      this.log("Turn dealt.");
+      this.updateTeacherToggleUI();
+      this.updateUI(true);
+    }
+
+    dealRiver(){
+      this.burn();
+      this.communityCards.push(this.deck.pop());
+      this.gamePhase = "river";
+      this.log("River dealt.");
+      this.updateTeacherToggleUI();
+      this.updateUI(true);
+    }
+
+    switchPlayer(){
+      this.currentPlayer = (this.currentPlayer === 1) ? 2 : 1;
+    }
+
+    // --- Hand evaluation (reasonable, not casino-perfect) ---
+    straightHigh(valuesSet){
+      const vals = Array.from(valuesSet);
+      if(vals.length < 5) return null;
+
+      // Ace-low wheel
+      const hasWheel = valuesSet.has(14) && valuesSet.has(2) && valuesSet.has(3) && valuesSet.has(4) && valuesSet.has(5);
+      if(hasWheel) return 5;
+
+      const sorted = vals.sort((a,b)=>a-b);
+      let run = 1;
+      let best = null;
+      for(let i=1;i<sorted.length;i++){
+        if(sorted[i] === sorted[i-1]) continue;
+        if(sorted[i] === sorted[i-1]+1){
+          run++;
+          if(run>=5) best = sorted[i];
+        } else {
+          run = 1;
+        }
+      }
+      return best;
+    }
+
+    evaluate(cards){
+      // counts
+      const byValue = new Map();
+      const bySuit = new Map();
+
+      for(const c of cards){
+        byValue.set(c.num, (byValue.get(c.num)||0)+1);
+        bySuit.set(c.suit, (bySuit.get(c.suit)||0)+1);
+      }
+
+      const valuesDesc = Array.from(byValue.keys()).sort((a,b)=>b-a);
+
+      // flush
+      let flushSuit = null;
+      for(const [s,count] of bySuit.entries()){
+        if(count >= 5){ flushSuit = s; break; }
+      }
+
+      const allValues = new Set(byValue.keys());
+      const straight = this.straightHigh(allValues);
+
+      // straight flush / royal
+      if(flushSuit){
+        const flushNums = cards.filter(c=>c.suit===flushSuit).map(c=>c.num);
+        const sf = this.straightHigh(new Set(flushNums));
+        if(sf){
+          // royal: A-high straight flush (10-J-Q-K-A => high = 14 AND contains 10)
+          const isRoyal = sf===14 && flushNums.includes(10);
+          return isRoyal
+            ? { rank:10, name:"Royal Flush", tiebreak:[14] }
+            : { rank:9, name:"Straight Flush", tiebreak:[sf] };
+        }
+      }
+
+      // group counts
+      const groups = Array.from(byValue.entries())
+        .map(([num,count])=>({num, count}))
+        .sort((a,b)=> (b.count-a.count) || (b.num-a.num));
+
+      const top = groups[0]?.count || 0;
+      const second = groups[1]?.count || 0;
+
+      if(top === 4){
+        const quad = groups[0].num;
+        const kicker = valuesDesc.find(v=>v!==quad) || 0;
+        return { rank:8, name:"Four of a Kind", tiebreak:[quad, kicker] };
+      }
+
+      if(top === 3 && second >= 2){
+        const trips = groups[0].num;
+        const pair = groups.find(g=>g.num!==trips && g.count>=2)?.num || 0;
+        return { rank:7, name:"Full House", tiebreak:[trips, pair] };
+      }
+
+      if(flushSuit){
+        const top5 = cards.filter(c=>c.suit===flushSuit).map(c=>c.num).sort((a,b)=>b-a).slice(0,5);
+        return { rank:6, name:"Flush", tiebreak:top5 };
+      }
+
+      if(straight){
+        return { rank:5, name:"Straight", tiebreak:[straight] };
+      }
+
+      if(top === 3){
+        const trips = groups[0].num;
+        const kickers = valuesDesc.filter(v=>v!==trips).slice(0,2);
+        return { rank:4, name:"Three of a Kind", tiebreak:[trips, ...kickers] };
+      }
+
+      if(top === 2 && second === 2){
+        const pair1 = groups[0].num;
+        const pair2 = groups[1].num;
+        const kicker = valuesDesc.find(v=>v!==pair1 && v!==pair2) || 0;
+        return { rank:3, name:"Two Pair", tiebreak:[pair1, pair2, kicker] };
+      }
+
+      if(top === 2){
+        const pair = groups[0].num;
+        const kickers = valuesDesc.filter(v=>v!==pair).slice(0,3);
+        return { rank:2, name:"One Pair", tiebreak:[pair, ...kickers] };
+      }
+
+      return { rank:1, name:"High Card", tiebreak:valuesDesc.slice(0,5) };
+    }
+
+    compare(a,b){
+      if(a.rank !== b.rank) return a.rank - b.rank;
+      const len = Math.max(a.tiebreak.length, b.tiebreak.length);
+      for(let i=0;i<len;i++){
+        const av = a.tiebreak[i]||0;
+        const bv = b.tiebreak[i]||0;
+        if(av !== bv) return av - bv;
+      }
+      return 0;
+    }
+
+    // --- Gameplay actions ---
+    playerAction(action, amount=0){
+      if(this.handOver){
+        this.log("Hand ended. Click \"Deal New Hand\" to continue.");
+        playSound("error");
+        return;
+      }
+      const isP1 = this.currentPlayer === 1;
+      const name = isP1 ? this.player1Name : this.player2Name;
+
+      const chips = isP1 ? this.player1Chips : this.player2Chips;
+
+      const spend = (amt) => {
+        amt = Math.max(0, Math.floor(amt));
+        if(amt > (isP1 ? this.player1Chips : this.player2Chips)){
+          this.log(`${name}: Not enough chips.`);
+          playSound("error");
+          return false;
+        }
+        if(isP1) this.player1Chips -= amt; else this.player2Chips -= amt;
+        this.pot += amt;
+        if(amt>0) playSound("chip");
+        return true;
+      };
+
+      switch(action){
+        case "bet": {
+          const bet = Math.max(1, Math.floor(amount));
+          if(!spend(bet)) return;
+          this.currentBet = bet;
+          this.checkedOnce = false;
+          this.log(`${name} bets ${bet}.`);
+          this.switchPlayer();
+          break;
+        }
+        case "raise": {
+          const raiseTo = Math.max(this.currentBet*2, Math.floor(amount) || this.currentBet*2 || 10);
+          if(!spend(raiseTo)) return;
+          this.currentBet = raiseTo;
+          this.checkedOnce = false;
+          this.log(`${name} raises to ${raiseTo}.`);
+          this.switchPlayer();
+          break;
+        }
+        case "call": {
+          const callAmt = Math.max(0, Math.floor(this.currentBet));
+          if(callAmt === 0){
+            this.log(`${name}: Nothing to call. (Check instead)`);
+            return;
+          }
+          if(!spend(callAmt)) return;
+          this.log(`${name} calls ${callAmt}.`);
+          this.checkedOnce = false;
+          this.advancePhase();
+          break;
+        }
+        case "check": {
+          if(this.currentBet > 0){
+            this.log(`${name} checks (but there's a bet).`);
+            this.switchPlayer();
+            break;
+          }
+          if(this.checkedOnce){
+            this.log(`${name} checks.`);
+            
+            playSound("check");
+this.checkedOnce = false;
+            this.advancePhase();
+          } else {
+            this.log(`${name} checks.`);
+            this.checkedOnce = true;
+            this.switchPlayer();
+          }
+          break;
+        }
+        case "fold": {
+          this.log(`${name} folds.`);
+          const winner = isP1 ? 2 : 1;
+          playSound("fold");
+                              // Fold win -> give a simple prompt tier
+          const wName = (winner===1) ? this.player1Name : this.player2Name;
+          const cat = "low";
+          this.setWinnerPrompt({ winnerName: wName, handName: "Fold", rank: 1, category: cat, promptText: pickPrompt(cat) });
+this.awardPot(winner, "Fold");
+          break;
+        }
+      }
+
+      this.updateUI();
+    }
+
+    advancePhase(){
+      this.currentBet = 0;
+
+      if(this.gamePhase === "preflop") return this.dealFlop();
+      if(this.gamePhase === "flop") return this.dealTurn();
+      if(this.gamePhase === "turn") return this.dealRiver();
+      if(this.gamePhase === "river") return this.showdown();
+    }
+
+    
+    showdown(){
+      // Reveal teacher cards automatically at showdown
+      this.revealTeacher = true;
+      this.updateTeacherToggleUI();
+      this.updateUI();
+
+      const h1 = this.evaluate([...this.player1Cards, ...this.communityCards]);
+      const h2 = this.evaluate([...this.player2Cards, ...this.communityCards]);
+
+      this.log(`Showdown! ${this.player1Name}: ${h1.name} | ${this.player2Name}: ${h2.name}`);
+
+      const cmp = this.compare(h1, h2);
+      if(cmp > 0){
+        const cat = promptCategoryFromRank(h1.rank);
+        this.setWinnerPrompt({ winnerName: this.player1Name, handName: h1.name, rank: h1.rank, category: cat, promptText: pickPrompt(cat) });
+        this.awardPot(1, h1.name);
+      }
+      else if(cmp < 0){
+        const cat = promptCategoryFromRank(h2.rank);
+        this.setWinnerPrompt({ winnerName: this.player2Name, handName: h2.name, rank: h2.rank, category: cat, promptText: pickPrompt(cat) });
+        this.awardPot(2, h2.name);
+      }
+      else{
+        this.setWinnerPrompt({ winnerName: "Split Pot", handName: "Tie", category: "split", promptText: pickPrompt("split") });
+        this.splitPot();
+      }
+    }
+
+
+    awardPot(winner, reason=""){
+      const winnerName = (winner===1) ? this.player1Name : this.player2Name;
+
+      // Apply student bonus only when student wins
+      if(winner === 1 && this.player1Bonus.total > 0){
+        this.player1Chips += this.player1Bonus.total;
+        this.log(`${this.player1Name} gets +${this.player1Bonus.total} bonus chips!`);
+      }
+
+      if(winner === 1) this.player1Chips += this.pot;
+      else this.player2Chips += this.pot;
+
+      this.log(`🏆 ${winnerName} wins ${this.pot} chips${reason ? " ("+reason+")" : ""}!`);
+
+      playSound("win");
+      // end-of-hand state
+      const won = this.pot;
+      this.pot = this.basePot;
+      this.currentBet = 0;
+      this.checkedOnce = false;
+      this.handOver = true;
+      this.currentPlayer = 0;
+
+      this.updateUI();
+      winFX(winner, winnerName);
+      showToast(`🏆 ${winnerName} wins ${won} chips${reason ? " ("+reason+")" : ""}!`, "good");
+    }
+
+    splitPot(){
+      const potNow = this.pot;
+      const half = Math.floor(potNow/2);
+      this.player1Chips += half;
+      this.player2Chips += (potNow - half);
+      this.log(`🤝 Pot split. ${this.player1Name} gets ${half}, ${this.player2Name} gets ${potNow-half}.`);
+
+      playSound("win");
+      // end-of-hand state
+      this.pot = this.basePot;
+      this.currentBet = 0;
+      this.checkedOnce = false;
+      this.handOver = true;
+      this.currentPlayer = 0;
+
+      this.updateUI();
+      splitFX();
+      showToast(`🤝 Split pot: ${half} / ${potNow-half}`, "split");
+    }
+
+    resetForNextHand(){
+      clearCelebration();
+      this.pot = this.basePot;
+      this.currentBet = 0;
+      this.gamePhase = "preflop";
+      this.currentPlayer = 1;
+      this.checkedOnce = false;
+
+      // reset bonus
+      this.player1Bonus = { total: 0, hedging: 0, linkers: 0, correction: 0 };
+
+      // keep cards visible until next hand (optional) - we keep them.
+      this.updateUI();
+    }
+
+    // --- UI ---
+    cardHTML(card){
+      if(card && card.back){
+        return `<div class="card back card-dealt"><div class="card-suit">🂠</div></div>`;
+      }
+      if(!card) return `<div class="card-slot">?</div>`;
+      const suit = card.suit;
+      return `
+        <div class="card ${suit} card-dealt">
+          <div class="card-value">${card.value}</div>
+          <div class="card-suit">${SUIT_SYMBOL[suit]}</div>
+        </div>
+      `;
+    }
+
+    renderCards(containerSel, cards){
+      const el = $(containerSel);
+      if(!el) return;
+      el.innerHTML = cards.map(c=>this.cardHTML(c)).join("");
+    }
+
+    renderCommunity(){
+      const el = $("#communityCards");
+      if(!el) return;
+
+      const slots = ["Flop","Flop","Flop","Turn","River"];
+      const html = [];
+      for(let i=0;i<5;i++){
+        if(this.communityCards[i]){
+          html.push(this.cardHTML(this.communityCards[i]));
+        } else {
+          html.push(`<div class="card-slot">${slots[i]}</div>`);
+        }
+      }
+      el.innerHTML = html.join("");
+    }
+
+    updateNamesUI(){
+      $("#player1Name").textContent = this.player1Name;
+      $("#player2Name").textContent = this.player2Name;
+      $("#quickName1").value = this.player1Name;
+      $("#quickName2").value = this.player2Name;
+      $("#modalPlayer1Name").value = this.player1Name;
+      $("#modalPlayer2Name").value = this.player2Name;
+    }
+
+    
+    updateTeacherToggleUI(){
+      const btn = $("#toggleTeacherBtn");
+      if(!btn) return;
+      if(this.revealTeacher){
+        btn.textContent = "👁 Teacher Cards: Revealed";
+        btn.classList.add("btn-call");
+        btn.classList.remove("btn-check");
+      }else{
+        btn.textContent = "🙈 Teacher Cards: Hidden";
+        btn.classList.add("btn-check");
+        btn.classList.remove("btn-call");
+      }
+    }
+
+updateBonusUI(pulse=false){
+      $("#player1BonusTotal").textContent = `${this.player1Bonus.total} points`;
+      if(pulse){
+        const box = $(".bonus-tracker");
+        if(box){
+          box.classList.add("pulse");
+          setTimeout(()=>box.classList.remove("pulse"), 700);
+        }
+      }
+    }
+
+    updateUI(redealAnimation=false){
+      $("#potAmount").textContent = fmt(this.pot);
+      $("#player1Chips").textContent = fmt(this.player1Chips);
+      $("#player2Chips").textContent = fmt(this.player2Chips);
+
+      // Active highlight
+      $("#player1").classList.toggle("active", this.currentPlayer===1);
+      $("#player2").classList.toggle("active", this.currentPlayer===2);
+
+      const namesMissing = this.namesRequired || !(this.player1Name && this.player2Name);
+      const dealBtn = $("#dealBtn");
+      if(dealBtn) dealBtn.disabled = namesMissing;
+
+
+      const disableActions = this.handOver || (this.player1Cards.length!==2) || (this.player2Cards.length!==2);
+      ["betBtn","callBtn","raiseBtn","checkBtn","foldBtn","quickBet5","quickBet10","quickCall"].forEach(id=>{
+        const b = $("#"+id);
+        if(b) b.disabled = disableActions;
+      });
+
+      if(this.handOver){
+        $("#player1").classList.remove("active");
+        $("#player2").classList.remove("active");
+      }
+      // Status messages
+      if(this.handOver){
+        $("#player1Status").textContent = "Hand over — Deal New Hand";
+        $("#player2Status").textContent = "Hand over — Deal New Hand";
+      } else {
+        $("#player1Status").textContent = (this.currentPlayer===1) ? "Your turn!" : "Waiting...";
+        $("#player2Status").textContent = (this.currentPlayer===2) ? "Your turn!" : "Waiting...";
+      }
+
+      // Cards
+      this.renderCards("#player1Cards", this.player1Cards.length ? this.player1Cards : [null, null]);
+      const p2CardsForUI = (this.player2Cards.length===2 && !this.revealTeacher)
+        ? [{back:true},{back:true}]
+        : (this.player2Cards.length ? this.player2Cards : [null, null]);
+      this.renderCards("#player2Cards", p2CardsForUI);
+      this.renderCommunity();
+
+      // Hand names (update when possible)
+      const canEval = this.communityCards.length >= 0 && this.player1Cards.length===2 && this.player2Cards.length===2;
+      if(canEval){
+        const h1 = this.evaluate([...this.player1Cards, ...this.communityCards]);
+        const h2 = this.evaluate([...this.player2Cards, ...this.communityCards]);
+        $("#player1Hand").textContent = h1.name;
+        $("#player2Hand").textContent = this.revealTeacher ? h2.name : "Hidden";
+      } else {
+        $("#player1Hand").textContent = "Waiting...";
+        $("#player2Hand").textContent = "Waiting...";
+      }
+
+      this.updateNamesUI();
+      this.updateTeacherToggleUI();
+      this.updateBonusUI();
+    }
+    // --- Winner prompt (auto conversation card) ---
+    setWinnerPrompt({ winnerName="", handName="", rank=0, category="", promptText="" } = {}){
+      this.lastPromptWinner = winnerName || "";
+      this.lastPromptCategory = category || (rank ? promptCategoryFromRank(rank) : null);
+      this.lastPromptText = promptText || (this.lastPromptCategory ? pickPrompt(this.lastPromptCategory) : "");
+      const meta = $("#winnerPromptBox .prompt-meta");
+      if(meta){
+        if(!this.lastPromptCategory){
+          meta.textContent = "Tip: the prompt matches the winning hand strength.";
+        } else {
+          meta.textContent = `Winner: ${this.lastPromptWinner} • Hand: ${handName || "—"} • Tier: ${this.lastPromptCategory}`;
+        }
+      }
+      const title = $("#winnerPromptBox .prompt-title");
+      if(title){
+        title.textContent = this.lastPromptWinner ? "Answer this prompt" : "Win a hand to reveal a prompt";
+      }
+      const txt = $("#winnerPromptText");
+      if(txt) txt.textContent = this.lastPromptText || "—";
+
+      const nextBtn = $("#nextPromptBtn");
+      const copyBtn = $("#copyPromptBtn");
+      const enabled = !!this.lastPromptText;
+      if(nextBtn) nextBtn.disabled = !enabled;
+      if(copyBtn) copyBtn.disabled = !enabled;
+    }
+
+    nextWinnerPrompt(){
+      if(!this.lastPromptCategory){
+        this.setWinnerPrompt();
+        return;
+      }
+      this.lastPromptText = pickPrompt(this.lastPromptCategory);
+      const txt = $("#winnerPromptText");
+      if(txt) txt.textContent = this.lastPromptText;
+    }
+
+    async copyWinnerPrompt(){
+      if(!this.lastPromptText) return;
+      const content = `[${this.lastPromptWinner || "Winner"} • ${this.lastPromptCategory || "prompt"}] ${this.lastPromptText}`;
+      try{
+        await navigator.clipboard.writeText(content);
+        this.log("✅ Prompt copied to clipboard.");
+      }catch(e){
+        // fallback
+        const ta = document.createElement("textarea");
+        ta.value = content;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+        this.log("✅ Prompt copied.");
+      }
+    }
+
+
+
+    log(message){
+      const time = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      const entry = `[${time}] ${message}`;
+      const logEl = $("#gameLog");
+      if(logEl){
+        const div = document.createElement("div");
+        div.className = "log-entry";
+        div.textContent = entry;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+    }
+
+    // --- Events ---
+    
+    // --- Name gating (must set names at start) ---
+    openNameModal(force=false){
+      const modal = $("#nameModal");
+      if(!modal) return;
+
+      this.namesRequired = !!force;
+
+      // Configure modal UI
+      const titleEl = modal.querySelector(".modal-title");
+      const cancelBtn = $("#modalCancelBtn");
+      const saveBtn = $("#modalSaveBtn");
+
+      if(force){
+        if(titleEl) titleEl.textContent = "📝 Set Player Names to Start";
+        if(cancelBtn) cancelBtn.style.display = "none";
+        if(saveBtn) saveBtn.textContent = "Start Game";
+      }else{
+        if(titleEl) titleEl.textContent = "✏️ Edit Player Names";
+        if(cancelBtn) cancelBtn.style.display = "";
+        if(saveBtn) saveBtn.textContent = "Save";
+      }
+
+      $("#modalPlayer1Name").value = (this.player1Name || "").trim();
+      $("#modalPlayer2Name").value = (this.player2Name || "").trim();
+      modal.style.display = "flex";
+
+      // Focus
+      setTimeout(()=>{
+        const a = $("#modalPlayer1Name");
+        const b = $("#modalPlayer2Name");
+        if(a && !a.value) a.focus();
+        else if(b && !b.value) b.focus();
+      }, 40);
+    }
+
+    _applyNames(n1, n2){
+      this.player1Name = n1;
+      this.player2Name = n2;
+      // Sync quick editor + modal fields
+      const q1 = $("#quickName1"); const q2 = $("#quickName2");
+      if(q1) q1.value = n1;
+      if(q2) q2.value = n2;
+      const m1 = $("#modalPlayer1Name"); const m2 = $("#modalPlayer2Name");
+      if(m1) m1.value = n1;
+      if(m2) m2.value = n2;
+      this.updateNamesUI();
+    }
+
+    saveNamesFromModal(){
+      const n1 = ($("#modalPlayer1Name").value || "").trim();
+      const n2 = ($("#modalPlayer2Name").value || "").trim();
+      if(!n1 || !n2){
+        this.showToast("Por favor escriba ambos nombres para iniciar.", "split");
+        playSound("error");
+        return false;
+      }
+      this._applyNames(n1, n2);
+      this.namesRequired = false;
+      $("#nameModal").style.display = "none";
+      this.showToast("Nombres listos. ¡A jugar!", "good");
+      playSound("win");
+      this.updateUI(true);
+      return true;
+    }
+
+    saveNamesFromQuick(){
+      const n1 = ($("#quickName1").value || "").trim();
+      const n2 = ($("#quickName2").value || "").trim();
+      if(!n1 || !n2){
+        this.showToast("Por favor escriba ambos nombres.", "split");
+        playSound("error");
+        return false;
+      }
+      this._applyNames(n1, n2);
+      this.namesRequired = false;
+      this.showToast("Names updated.", "good");
+      playSound("chip");
+      this.updateUI();
+      return true;
+    }
+
+setupMeetQuickMode(){
+      const panelHost = document.querySelector("#leftSidebar");
+      if(!panelHost) return;
+
+      // Avoid double insert
+      if(document.getElementById("meetQuickPanel")) return;
+
+      const quickPanel = `
+        <div class="panel-section meet-quick-panel" id="meetQuickPanel">
+            <h3 class="panel-title">🎮 Google Meet Quick Actions</h3>
+            <p class="mini-hint">Student says code → Usted hace click. (Solo funciona en turno del estudiante)</p>
+            <div class="quick-buttons">
+                <button class="meet-action-btn" data-action="check">C - Check</button>
+                <button class="meet-action-btn" data-action="bet" data-amount="10">B10 - Bet 10</button>
+                <button class="meet-action-btn" data-action="bet" data-amount="25">B25 - Bet 25</button>
+                <button class="meet-action-btn" data-action="call">CA - Call</button>
+                <button class="meet-action-btn" data-action="raise2x">R - Raise (2x)</button>
+                <button class="meet-action-btn" data-action="fold">F - Fold</button>
+            </div>
+            <div class="custom-action">
+                <input type="number" id="customMeetAmount" placeholder="Custom amount" style="width: 140px;">
+                <button class="meet-action-btn" id="customMeetBetBtn" data-action="betCustom">Bet Custom</button>
+                <button class="meet-action-btn" id="customMeetRaiseBtn" data-action="raiseCustom">Raise Custom</button>
+            </div>
+        </div>
+      `;
+      panelHost.insertAdjacentHTML("beforeend", quickPanel);
+
+      // Event delegation
+      panelHost.addEventListener("click", (e)=>{
+        const btn = e.target.closest(".meet-action-btn");
+        if(!btn) return;
+
+        // Enfocado a Google Meet: solo en turno del estudiante
+        if(this.currentPlayer !== 1){
+          this.showToast("No es turno del estudiante.", "split");
+          playSound("error");
+          return;
+        }
+
+        const action = btn.dataset.action;
+        const amt = btn.dataset.amount ? parseInt(btn.dataset.amount, 10) : null;
+
+        if(action === "raise2x"){
+          const target = Math.max(this.currentBet*2 || 0, 10);
+          this.playerAction("raise", target);
+          return;
+        }
+
+        if(action === "betCustom"){
+          const v = parseInt(document.getElementById("customMeetAmount").value || "0", 10);
+          if(v>0) this.playerAction("bet", v);
+          else { this.showToast("Monto inválido.", "split"); playSound("error"); }
+          return;
+        }
+
+        if(action === "raiseCustom"){
+          const v = parseInt(document.getElementById("customMeetAmount").value || "0", 10);
+          if(v>0) this.playerAction("raise", v);
+          else { this.showToast("Monto inválido.", "split"); playSound("error"); }
+          return;
+        }
+
+        // basic actions
+        if(action === "bet") this.playerAction("bet", amt);
+        else this.playerAction(action);
+      });
+    }
+
+    setupEventListeners(){
+
+      // Deal
+      $("#dealBtn").addEventListener("click", () => this.newHand());
+
+      // Hide/reveal teacher hole cards
+      $("#toggleTeacherBtn").addEventListener("click", () => {
+        this.revealTeacher = !this.revealTeacher;
+        this.updateTeacherToggleUI();
+        this.updateUI();
+        this.log(`${this.player2Name} cards are now ${this.revealTeacher ? "REVEALED" : "HIDDEN"}.`);
+        playSound("check");
+      });
+
+      
+      $("#soundToggleBtn").addEventListener("click", () => { setSounds(!soundsOn); playSound("chip"); });
+// Chip amount buttons
+      $$(".chip-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          $$(".chip-btn").forEach(b=>b.classList.remove("active"));
+          btn.classList.add("active");
+          const amt = Number(btn.dataset.amount || 50);
+          this.betAmount = amt;
+          $("#customBet").value = "";
+          this.log(`Bet amount set to ${amt}.`);
+        });
+      });
+
+      // Custom bet input
+      $("#customBet").addEventListener("change", () => {
+        const v = clamp(Number($("#customBet").value || 0), 1, 999999);
+        if(v>0){
+          $$(".chip-btn").forEach(b=>b.classList.remove("active"));
+          this.betAmount = v;
+          this.log(`Custom bet amount set to ${v}.`);
+        }
+      });
+
+      // Actions
+      $("#checkBtn").addEventListener("click", () => this.playerAction("check"));
+      $("#betBtn").addEventListener("click", () => this.playerAction("bet", this.betAmount));
+      $("#callBtn").addEventListener("click", () => this.playerAction("call"));
+      $("#raiseBtn").addEventListener("click", () => this.playerAction("raise", this.betAmount || (this.currentBet*2 || 10)));
+      $("#foldBtn").addEventListener("click", () => this.playerAction("fold"));
+
+      // Quick actions
+      $("#quickBet5").addEventListener("click", () => this.playerAction("bet", 5));
+      $("#quickBet10").addEventListener("click", () => this.playerAction("bet", 10));
+      $("#quickCall").addEventListener("click", () => {
+        if(this.currentBet > 0) return this.playerAction("call");
+        return this.playerAction("check");
+      });
+
+      // Winner prompt controls
+      $("#nextPromptBtn").addEventListener("click", () => this.nextWinnerPrompt());
+      $("#copyPromptBtn").addEventListener("click", () => this.copyWinnerPrompt());
+
+
+      // Bonus buttons
+      $$(".bonus-point").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const type = btn.dataset.bonus;
+          if(!["hedging","linkers","correction"].includes(type)) return;
+          this.player1Bonus[type] += 1;
+          this.player1Bonus.total += 1;
+          this.updateBonusUI(true);
+          this.log(`${this.player1Name} bonus +1 (${type}).`);
+        });
+      });
+
+      // Quick names
+      $("#quickSaveBtn").addEventListener("click", () => {
+        this.saveNamesFromQuick();
+        this.log("Names updated.");
+      });
+
+      // Modal open
+      $$(".name-edit-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.openNameModal(false);
+        });
+      });
+
+      // Modal cancel/save
+      $("#modalCancelBtn").addEventListener("click", () => {
+        if(this.namesRequired){
+          this.showToast("Debe ingresar los nombres para iniciar.", "split");
+          playSound("error");
+          return;
+        }
+        $("#nameModal").style.display = "none";
+      });
+
+      $("#modalSaveBtn").addEventListener("click", () => {
+        this.saveNamesFromModal();
+      });
+
+      // Close modal on backdrop click
+      $("#nameModal").addEventListener("click", (e) => {
+        if(e.target && e.target.id === "nameModal"){
+          if(this.namesRequired){ this.showToast("Ingrese los nombres para iniciar.", "split"); playSound("error"); return; }
+          $("#nameModal").style.display = "none";
+        }
+      });
+    }
+  }
+
+  window.pokerConversationGame = new PokerGame();
+})();
+</script>
+</body>
+</html>
